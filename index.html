@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solar Storm Battle Arena</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&amp;family=Exo+2:wght@300;400;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+html, body { height: 100%; margin: 0; padding: 0; }
+* { box-sizing: border-box; }
+
+@keyframes starfield {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-100%); }
+}
+@keyframes pulse-glow {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 8px currentColor); }
+  50% { filter: brightness(1.3) drop-shadow(0 0 20px currentColor); }
+}
+@keyframes orbit-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@keyframes float-up {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+}
+@keyframes zone-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes explosionRing {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+@keyframes correctFlash {
+  0% { background: rgba(34,197,94,0.3); }
+  100% { background: transparent; }
+}
+@keyframes wrongFlash {
+  0% { background: rgba(239,68,68,0.4); }
+  100% { background: transparent; }
+}
+@keyframes meteorShower {
+  0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-200px, 300px) rotate(180deg); opacity: 0; }
+}
+
+.star-layer {
+  position: absolute; width: 100%; height: 200%;
+  background: radial-gradient(1px 1px at 10% 20%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 30% 60%, #ffd700 50%, transparent),
+    radial-gradient(1px 1px at 50% 10%, #fff 50%, transparent),
+    radial-gradient(2px 2px at 70% 80%, #87ceeb 50%, transparent),
+    radial-gradient(1px 1px at 90% 40%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 15% 90%, #ffa500 50%, transparent),
+    radial-gradient(1px 1px at 45% 45%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 80% 15%, #e0e0ff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 60% 70%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 25% 35%, #fffacd 50%, transparent);
+  animation: starfield 40s linear infinite;
+}
+
+.planet-emoji { font-size: 2.5rem; animation: pulse-glow 3s ease-in-out infinite; }
+.orbit-ring { animation: orbit-spin 20s linear infinite; }
+.shake-anim { animation: shake 0.5s ease; }
+.float-text { animation: float-up 1s ease forwards; pointer-events: none; }
+.zone-warning { animation: zone-pulse 1s ease-in-out infinite; }
+.slide-in { animation: slideIn 0.5s ease forwards; }
+
+.game-btn {
+  position: relative; overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.game-btn:hover { transform: translateY(-2px); }
+.game-btn:active { transform: translateY(0); }
+
+.answer-btn { transition: all 0.25s ease; }
+.answer-btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(99,102,241,0.4);
+}
+.answer-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.answer-btn.correct-answer {
+  border-color: #22c55e !important;
+  background: rgba(34,197,94,0.2) !important;
+  box-shadow: 0 0 25px rgba(34,197,94,0.5);
+}
+.answer-btn.wrong-answer {
+  border-color: #ef4444 !important;
+  background: rgba(239,68,68,0.2) !important;
+  box-shadow: 0 0 25px rgba(239,68,68,0.5);
+}
+
+.hp-bar { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+.energy-bar { transition: width 0.6s ease; }
+
+.planet-card {
+  backdrop-filter: blur(12px);
+  transition: all 0.4s ease;
+}
+.planet-card:hover { transform: translateY(-4px); }
+
+.tooltip-fact {
+  position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.9); border: 1px solid #6366f1;
+  border-radius: 8px; padding: 8px 12px; font-size: 0.75rem;
+  white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity 0.3s;
+}
+.fact-trigger:hover .tooltip-fact { opacity: 1; }
+
+.leaderboard-row {
+  transition: all 0.3s ease;
+}
+.leaderboard-row:hover {
+  background: rgba(99,102,241,0.15);
+}
+
+.minimap-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  position: absolute;
+  transition: all 0.5s ease;
+}
+
+.cosmic-border {
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+.cosmic-border::before {
+  content: ''; position: absolute; inset: -1px;
+  background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899, #6366f1);
+  border-radius: inherit; z-index: -1;
+  background-size: 300% 300%;
+  animation: borderShift 4s ease infinite;
+}
+@keyframes borderShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.screen-flash-correct { animation: correctFlash 0.5s ease; }
+.screen-flash-wrong { animation: wrongFlash 0.5s ease; }
+</style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full overflow-auto" style="background: #0a0a1a; font-family: 'Exo 2', sans-serif; color: #e2e8f0;">
+  <audio id="bg-music" preload="auto" loop style="display:none;"><source src="https://github.com/luciasavitri28/musikgim/raw/refs/heads/main/Atlas_of_the_Stars.mp3" type="audio/mpeg">
+  </audio> <!-- Audio Control Button -->
+  <div style="position:fixed; top:12px; right:12px; z-index:100;"><button id="audio-toggle" onclick="toggleAudio()" class="game-btn px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-2" style="background: rgba(99,102,241,0.3); color: #a78bfa; border: 1px solid rgba(99,102,241,0.5); cursor: pointer; transition: all 0.3s ease;"> <span id="audio-icon">🔊</span> <span id="audio-text" style="font-size:0.75rem;">On</span> </button>
+  </div>
+  <div id="app" class="relative w-full h-full overflow-auto">
+   <!-- Starfield background -->
+   <div class="fixed inset-0 overflow-hidden pointer-events-none" style="z-index:0;">
+    <div class="star-layer"></div>
+    <div class="star-layer" style="animation-duration:60s; opacity:0.5;"></div>
+   </div><!-- SCREEN: Start -->
+   <div id="screen-start" class="relative flex flex-col items-center justify-center w-full h-full p-4" style="z-index:1;">
+    <div class="text-center slide-in">
+     <!-- Sun visual -->
+     <div class="relative mx-auto mb-6" style="width:140px; height:140px;">
+      <div class="absolute inset-0 rounded-full" style="background: radial-gradient(circle, #fbbf24 0%, #f59e0b 40%, #d97706 70%, transparent 100%); animation: pulse-glow 2s ease-in-out infinite; color: #fbbf24;"></div>
+      <div class="absolute inset-4 rounded-full" style="background: radial-gradient(circle, #fef3c7 0%, #fbbf24 60%);"></div><!-- Orbiting dot -->
+      <div class="orbit-ring absolute inset-0">
+       <div class="absolute w-3 h-3 rounded-full" style="background: #60a5fa; top: -6px; left: 50%; transform: translateX(-50%); box-shadow: 0 0 10px #60a5fa;"></div>
+      </div>
+     </div>
+     <h1 id="title-text" style="font-family: 'Orbitron', monospace; font-size: 2.2rem; font-weight: 900; background: linear-gradient(135deg, #fbbf24, #f59e0b, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1.2;" class="mb-2">Solar Storm Battle Arena</h1>
+     <p class="text-sm mb-8" style="color: #94a3b8; max-width: 400px; margin: 0 auto;">Bertahan hidup di arena tata surya! Jawab pertanyaan IPA untuk mendapatkan energi, senjata, dan perlindungan. 🌌</p>
+     <div class="mb-6 mx-auto" style="max-width: 300px;">
+      <label id="name-label" class="block text-left text-xs mb-1.5 font-semibold" style="color: #a78bfa;">Nama Penjelajah</label> <input id="player-name" type="text" placeholder="Masukkan namamu..." maxlength="20" class="w-full px-4 py-3 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" style="background: rgba(30,27,75,0.8); border: 1px solid rgba(99,102,241,0.3); color: #e2e8f0;">
+     </div><button id="start-btn" onclick="startGame()" class="game-btn px-8 py-3.5 rounded-xl font-bold text-base" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(99,102,241,0.4);"> 🚀 Mulai Misi! </button>
+     <div class="mt-8 flex justify-center gap-4 text-2xl">
+      <span title="Merkurius">☿️</span> <span title="Venus">♀️</span> <span title="Bumi">🌍</span> <span title="Mars">🔴</span> <span title="Jupiter">🟠</span> <span title="Saturnus">🪐</span> <span title="Uranus">💠</span> <span title="Neptunus">🔵</span>
+     </div>
+    </div>
+   </div><!-- SCREEN: Game -->
+   <div id="screen-game" class="relative w-full h-full hidden" style="z-index:1;">
+    <!-- Top HUD -->
+    <header class="sticky top-0 w-full px-3 py-2 flex items-center justify-between flex-wrap gap-2" style="background: rgba(10,10,26,0.9); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(99,102,241,0.2); z-index: 20;">
+     <div class="flex items-center gap-3">
+      <div class="text-xs">
+       <span style="color: #94a3b8;">Orbit:</span> <span id="hud-orbit" class="font-bold" style="color: #fbbf24; font-family: 'Orbitron', monospace;">1</span> <span style="color: #4b5563;">/8</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+       <span class="text-xs" style="color: #ef4444;">❤️</span>
+       <div class="rounded-full overflow-hidden" style="width: 80px; height: 8px; background: rgba(239,68,68,0.2);">
+        <div id="hp-fill" class="hp-bar h-full rounded-full" style="width: 100%; background: linear-gradient(90deg, #ef4444, #f97316);"></div>
+       </div><span id="hp-text" class="text-xs font-bold" style="color: #f97316;">100</span>
+      </div>
+     </div>
+     <div class="flex items-center gap-3">
+      <div class="flex items-center gap-1.5">
+       <span class="text-xs">⚡</span>
+       <div class="rounded-full overflow-hidden" style="width: 60px; height: 8px; background: rgba(99,102,241,0.2);">
+        <div id="energy-fill" class="energy-bar h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7);"></div>
+       </div><span id="energy-text" class="text-xs font-bold" style="color: #a855f7;">0</span>
+      </div>
+      <div class="flex items-center gap-1">
+       <span class="text-xs">🛡️</span> <span id="shield-text" class="text-xs font-bold" style="color: #38bdf8;">0</span>
+      </div>
+      <div class="text-xs">
+       <span style="color: #94a3b8;">Skor:</span> <span id="hud-score" class="font-bold" style="color: #22c55e; font-family: 'Orbitron', monospace;">0</span>
+      </div>
+     </div>
+    </header><!-- Zone warning -->
+    <div id="zone-warning" class="hidden w-full py-1.5 text-center text-xs font-semibold zone-warning" style="background: rgba(239,68,68,0.15); color: #fca5a5;">
+     ⚠️ Badai Matahari mendekat! Zona orbit menyusut!
+    </div><!-- Main game area -->
+    <div class="w-full max-w-lg mx-auto p-4">
+     <!-- Planet info card -->
+     <div id="planet-card" class="planet-card rounded-2xl p-4 mb-4" style="background: rgba(30,27,75,0.6); border: 1px solid rgba(99,102,241,0.2);">
+      <div class="flex items-center gap-3 mb-2">
+       <span id="planet-emoji" class="planet-emoji">🌍</span>
+       <div>
+        <h2 id="planet-name" class="font-bold text-lg" style="font-family: 'Orbitron', monospace; color: #c4b5fd;">Bumi</h2>
+        <p id="planet-desc" class="text-xs" style="color: #94a3b8;">Planet ketiga dari Matahari</p>
+       </div>
+      </div>
+      <div id="planet-fact" class="text-xs px-3 py-2 rounded-lg" style="background: rgba(99,102,241,0.1); color: #a5b4fc; border-left: 3px solid #6366f1;">
+       💡 Bumi adalah satu-satunya planet yang diketahui memiliki kehidupan.
+      </div>
+     </div><!-- Enemies alive counter -->
+     <div class="flex justify-between items-center mb-3 text-xs" style="color: #94a3b8;">
+      <span>👾 Penjelajah tersisa: <strong id="enemies-count" style="color: #f97316;">50</strong></span> <span id="timer-display" style="color: #fbbf24;">⏱️ 15</span>
+     </div><!-- Question box -->
+     <div id="question-box" class="rounded-2xl p-4 mb-4 slide-in" style="background: rgba(15,12,50,0.8); border: 1px solid rgba(99,102,241,0.3);">
+      <div class="flex items-center gap-2 mb-3">
+       <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background: rgba(168,85,247,0.2); color: #c084fc;" id="q-category">Tata Surya</span> <span class="text-xs px-2 py-0.5 rounded-full font-semibold" id="q-difficulty" style="background: rgba(34,197,94,0.2); color: #86efac;">Mudah</span>
+      </div>
+      <p id="question-text" class="font-semibold mb-4" style="font-size: 0.95rem; line-height: 1.5; color: #f1f5f9;">Loading pertanyaan...</p>
+      <div id="answers-container" class="flex flex-col gap-2.5">
+       <!-- Answers injected here -->
+      </div>
+     </div><!-- Feedback area -->
+     <div id="feedback-area" class="hidden rounded-xl p-3 mb-3 text-center text-sm font-semibold slide-in" style="backdrop-filter: blur(8px);">
+     </div><!-- Items/Power-ups collected -->
+     <div id="items-bar" class="flex gap-2 flex-wrap mb-3">
+     </div>
+    </div>
+   </div><!-- SCREEN: Game Over -->
+   <div id="screen-gameover" class="relative w-full h-full hidden flex-col items-center justify-center p-4" style="z-index:1;">
+    <div class="text-center slide-in w-full max-w-md mx-auto">
+     <div id="go-emoji" class="text-6xl mb-4">
+      💀
+     </div>
+     <h2 id="go-title" class="text-2xl font-bold mb-2" style="font-family: 'Orbitron', monospace; color: #f87171;">Misi Gagal!</h2>
+     <p id="go-subtitle" class="text-sm mb-6" style="color: #94a3b8;">Oksigenmu habis di orbit luar angkasa...</p>
+     <div class="rounded-2xl p-5 mb-6" style="background: rgba(30,27,75,0.7); border: 1px solid rgba(99,102,241,0.2);">
+      <div class="grid grid-cols-2 gap-3 text-center mb-4">
+       <div class="rounded-xl p-3" style="background: rgba(99,102,241,0.1);">
+        <div class="text-2xl font-bold" style="font-family: 'Orbitron', monospace; color: #fbbf24;" id="go-score">
+         0
+        </div>
+        <div class="text-xs" style="color: #94a3b8;">
+         Skor Akhir
+        </div>
+       </div>
+       <div class="rounded-xl p-3" style="background: rgba(99,102,241,0.1);">
+        <div class="text-2xl font-bold" style="font-family: 'Orbitron', monospace; color: #22c55e;" id="go-correct">
+         0
+        </div>
+        <div class="text-xs" style="color: #94a3b8;">
+         Jawaban Benar
+        </div>
+       </div>
+       <div class="rounded-xl p-3" style="background: rgba(99,102,241,0.1);">
+        <div class="text-2xl font-bold" style="font-family: 'Orbitron', monospace; color: #a855f7;" id="go-orbit">
+         1
+        </div>
+        <div class="text-xs" style="color: #94a3b8;">
+         Orbit Tercapai
+        </div>
+       </div>
+       <div class="rounded-xl p-3" style="background: rgba(99,102,241,0.1);">
+        <div class="text-2xl font-bold" style="font-family: 'Orbitron', monospace; color: #f97316;" id="go-rank">
+         -
+        </div>
+        <div class="text-xs" style="color: #94a3b8;">
+         Peringkat
+        </div>
+       </div>
+      </div><!-- Facts learned -->
+      <div class="text-left">
+       <p class="text-xs font-semibold mb-2" style="color: #a78bfa;">📚 Fakta yang Kamu Pelajari:</p>
+       <div id="go-facts" class="flex flex-col gap-1.5 text-xs" style="color: #94a3b8; max-height: 120px; overflow-y: auto;">
+       </div>
+      </div>
+     </div><!-- Leaderboard -->
+     <div class="rounded-2xl p-4 mb-6" style="background: rgba(30,27,75,0.7); border: 1px solid rgba(99,102,241,0.2);">
+      <h3 class="text-sm font-bold mb-3" style="font-family: 'Orbitron', monospace; color: #fbbf24;">🏆 Leaderboard</h3>
+      <div id="leaderboard" class="flex flex-col gap-1">
+      </div>
+     </div><button onclick="restartGame()" class="game-btn px-8 py-3 rounded-xl font-bold text-sm" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(99,102,241,0.4);"> 🔄 Main Lagi </button>
+    </div>
+   </div><!-- Float text container -->
+   <div id="float-container" class="fixed inset-0 pointer-events-none" style="z-index: 50;"></div>
+  </div>
+  <script>
+// ============ AUDIO CONTROL ============
+let audioEnabled = true;
+const music = document.getElementById('bg-music');
+
+function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  const btn = document.getElementById('audio-toggle');
+  const icon = document.getElementById('audio-icon');
+  const text = document.getElementById('audio-text');
+  
+  if (audioEnabled) {
+    music.play().catch(e => console.error('Audio play failed:', e));
+    icon.textContent = '🔊';
+    text.textContent = 'On';
+    btn.style.background = 'rgba(99,102,241,0.3)';
+    btn.style.color = '#a78bfa';
+  } else {
+    music.pause();
+    icon.textContent = '🔇';
+    text.textContent = 'Off';
+    btn.style.background = 'rgba(99,102,241,0.15)';
+    btn.style.color = '#64748b';
+  }
+}
+
+// Try to auto-play on user interaction
+document.addEventListener('click', () => {
+  if (audioEnabled && music.paused) {
+    music.play().catch(e => console.error('Auto-play prevented:', e));
+  }
+}, { once: true });
+
+// ============ GAME DATA ============
+
+const PLANETS = [
+  { name: 'Merkurius', emoji: '☿️', color: '#9ca3af', desc: 'Planet terkecil & terdekat ke Matahari', facts: [
+    'Merkurius adalah planet terkecil di tata surya.',
+    'Suhu permukaan Merkurius bisa mencapai 430°C siang hari.',
+    'Merkurius tidak memiliki atmosfer tebal.',
+    'Satu hari di Merkurius = 59 hari di Bumi.'
+  ]},
+  { name: 'Venus', emoji: '♀️', color: '#fbbf24', desc: 'Planet terpanas di tata surya', facts: [
+    'Venus adalah planet terpanas dengan suhu 465°C.',
+    'Venus berotasi berlawanan arah dari planet lain.',
+    'Atmosfer Venus sangat tebal dan beracun (CO₂).',
+    'Venus dijuluki Bintang Kejora.'
+  ]},
+  { name: 'Bumi', emoji: '🌍', color: '#3b82f6', desc: 'Planet ketiga dari Matahari', facts: [
+    'Bumi satu-satunya planet yang memiliki kehidupan.',
+    '70% permukaan Bumi tertutup air.',
+    'Bumi memiliki 1 satelit alami yaitu Bulan.',
+    'Revolusi Bumi = 365,25 hari.'
+  ]},
+  { name: 'Mars', emoji: '🔴', color: '#ef4444', desc: 'Planet Merah', facts: [
+    'Mars disebut Planet Merah karena oksida besi.',
+    'Mars memiliki gunung tertinggi: Olympus Mons (21 km).',
+    'Mars punya 2 bulan: Phobos dan Deimos.',
+    'Satu hari di Mars ≈ 24 jam 37 menit.'
+  ]},
+  { name: 'Jupiter', emoji: '🟠', color: '#f97316', desc: 'Planet terbesar di tata surya', facts: [
+    'Jupiter adalah planet terbesar di tata surya.',
+    'Jupiter memiliki Bintik Merah Besar (badai raksasa).',
+    'Jupiter punya 95+ bulan, termasuk Ganymede.',
+    'Jupiter adalah planet gas raksasa.'
+  ]},
+  { name: 'Saturnus', emoji: '🪐', color: '#eab308', desc: 'Planet bercincin indah', facts: [
+    'Cincin Saturnus terbuat dari es dan batuan.',
+    'Saturnus bisa mengapung di air (densitas rendah).',
+    'Saturnus punya 146+ bulan, termasuk Titan.',
+    'Saturnus adalah planet gas raksasa kedua.'
+  ]},
+  { name: 'Uranus', emoji: '💠', color: '#06b6d4', desc: 'Planet yang berotasi miring', facts: [
+    'Uranus berotasi dengan sumbu sangat miring (98°).',
+    'Uranus disebut planet es raksasa.',
+    'Suhu Uranus mencapai -224°C.',
+    'Uranus punya 27 bulan yang diketahui.'
+  ]},
+  { name: 'Neptunus', emoji: '🔵', color: '#6366f1', desc: 'Planet terjauh dari Matahari', facts: [
+    'Neptunus adalah planet terjauh di tata surya.',
+    'Angin di Neptunus mencapai 2.100 km/jam.',
+    'Neptunus punya 16 bulan, termasuk Triton.',
+    'Neptunus butuh 165 tahun untuk mengorbit Matahari.'
+  ]}
+];
+
+const QUESTIONS = [
+  // Orbit 1 - Merkurius
+  { orbit: 0, q: 'Planet manakah yang paling dekat dengan Matahari?', opts: ['Merkurius','Venus','Bumi','Mars'], ans: 0, cat: 'Urutan Planet', diff: 'Mudah' },
+  { orbit: 0, q: 'Berapa suhu permukaan Merkurius di siang hari?', opts: ['100°C','430°C','200°C','50°C'], ans: 1, cat: 'Suhu Planet', diff: 'Sedang' },
+  { orbit: 0, q: 'Merkurius adalah planet terkecil di tata surya. Benar atau salah?', opts: ['Benar','Salah'], ans: 0, cat: 'Fakta Planet', diff: 'Mudah' },
+  // Orbit 2 - Venus
+  { orbit: 1, q: 'Planet apa yang dijuluki Bintang Kejora?', opts: ['Mars','Jupiter','Venus','Saturnus'], ans: 2, cat: 'Julukan Planet', diff: 'Mudah' },
+  { orbit: 1, q: 'Mengapa Venus adalah planet terpanas?', opts: ['Dekat Matahari','Atmosfer CO₂ tebal','Memiliki lava','Tidak berotasi'], ans: 1, cat: 'Atmosfer', diff: 'Sedang' },
+  { orbit: 1, q: 'Venus berotasi searah dengan planet lain. Benar atau salah?', opts: ['Benar','Salah'], ans: 1, cat: 'Rotasi', diff: 'Sedang' },
+  // Orbit 3 - Bumi
+  { orbit: 2, q: 'Berapa persen permukaan Bumi yang tertutup air?', opts: ['50%','60%','70%','80%'], ans: 2, cat: 'Fakta Bumi', diff: 'Mudah' },
+  { orbit: 2, q: 'Satelit alami Bumi bernama...', opts: ['Titan','Bulan','Europa','Phobos'], ans: 1, cat: 'Satelit', diff: 'Mudah' },
+  { orbit: 2, q: 'Berapa lama Bumi mengorbit Matahari (revolusi)?', opts: ['30 hari','100 hari','365,25 hari','500 hari'], ans: 2, cat: 'Revolusi', diff: 'Sedang' },
+  // Orbit 4 - Mars
+  { orbit: 3, q: 'Mengapa Mars disebut Planet Merah?', opts: ['Lava aktif','Oksida besi','Cat merah','Dekat Matahari'], ans: 1, cat: 'Komposisi', diff: 'Mudah' },
+  { orbit: 3, q: 'Gunung tertinggi di tata surya ada di Mars. Namanya...', opts: ['Mount Everest','Olympus Mons','Mauna Kea','Maxwell Montes'], ans: 1, cat: 'Geografi', diff: 'Sedang' },
+  { orbit: 3, q: 'Mars memiliki berapa bulan?', opts: ['0','1','2','4'], ans: 2, cat: 'Satelit', diff: 'Sedang' },
+  // Orbit 5 - Jupiter
+  { orbit: 4, q: 'Planet terbesar di tata surya adalah...', opts: ['Saturnus','Neptunus','Jupiter','Uranus'], ans: 2, cat: 'Ukuran Planet', diff: 'Mudah' },
+  { orbit: 4, q: 'Bintik Merah Besar di Jupiter adalah...', opts: ['Gunung api','Badai raksasa','Kawah','Lautan'], ans: 1, cat: 'Fenomena', diff: 'Sedang' },
+  { orbit: 4, q: 'Jupiter termasuk jenis planet...', opts: ['Berbatu','Gas raksasa','Es','Kerdil'], ans: 1, cat: 'Klasifikasi', diff: 'Mudah' },
+  // Orbit 6 - Saturnus
+  { orbit: 5, q: 'Cincin Saturnus terbuat dari...', opts: ['Gas','Debu','Es dan batuan','Logam'], ans: 2, cat: 'Komposisi', diff: 'Sedang' },
+  { orbit: 5, q: 'Saturnus bisa mengapung di air karena...', opts: ['Ringan (densitas rendah)','Berbentuk pipih','Berputar cepat','Memiliki cincin'], ans: 0, cat: 'Sifat Fisik', diff: 'Sulit' },
+  { orbit: 5, q: 'Bulan terbesar Saturnus bernama...', opts: ['Europa','Ganymede','Titan','Callisto'], ans: 2, cat: 'Satelit', diff: 'Sedang' },
+  // Orbit 7 - Uranus
+  { orbit: 6, q: 'Uranus berotasi dengan kemiringan sumbu...', opts: ['23°','45°','98°','0°'], ans: 2, cat: 'Rotasi', diff: 'Sulit' },
+  { orbit: 6, q: 'Uranus termasuk jenis planet...', opts: ['Berbatu','Gas raksasa','Es raksasa','Kerdil'], ans: 2, cat: 'Klasifikasi', diff: 'Sedang' },
+  { orbit: 6, q: 'Suhu Uranus bisa mencapai...', opts: ['-100°C','-224°C','-50°C','0°C'], ans: 1, cat: 'Suhu Planet', diff: 'Sulit' },
+  // Orbit 8 - Neptunus
+  { orbit: 7, q: 'Planet terjauh dari Matahari saat ini adalah...', opts: ['Pluto','Uranus','Neptunus','Saturnus'], ans: 2, cat: 'Urutan Planet', diff: 'Mudah' },
+  { orbit: 7, q: 'Kecepatan angin di Neptunus bisa mencapai...', opts: ['500 km/jam','1.000 km/jam','2.100 km/jam','100 km/jam'], ans: 2, cat: 'Fenomena', diff: 'Sulit' },
+  { orbit: 7, q: 'Neptunus butuh berapa tahun untuk mengorbit Matahari?', opts: ['12 tahun','84 tahun','165 tahun','248 tahun'], ans: 2, cat: 'Revolusi', diff: 'Sulit' },
+  // General
+  { orbit: -1, q: 'Planet dalam tata surya yang termasuk planet berbatu adalah...', opts: ['Jupiter & Saturnus','Merkurius, Venus, Bumi, Mars','Uranus & Neptunus','Hanya Bumi'], ans: 1, cat: 'Klasifikasi', diff: 'Sedang' },
+  { orbit: -1, q: 'Matahari termasuk jenis bintang...', opts: ['Raksasa merah','Kerdil putih','Kerdil kuning','Neutron'], ans: 2, cat: 'Matahari', diff: 'Sedang' },
+  { orbit: -1, q: 'Gerak planet mengelilingi Matahari disebut...', opts: ['Rotasi','Revolusi','Presesi','Nutasi'], ans: 1, cat: 'Gerak Planet', diff: 'Mudah' },
+  { orbit: -1, q: 'Gerak planet berputar pada porosnya disebut...', opts: ['Revolusi','Rotasi','Orbitasi','Translasi'], ans: 1, cat: 'Gerak Planet', diff: 'Mudah' },
+  { orbit: -1, q: 'Sabuk asteroid terletak di antara orbit...', opts: ['Bumi & Mars','Mars & Jupiter','Jupiter & Saturnus','Venus & Bumi'], ans: 1, cat: 'Tata Surya', diff: 'Sedang' },
+  { orbit: -1, q: 'Planet yang memiliki cincin paling terlihat adalah...', opts: ['Jupiter','Uranus','Neptunus','Saturnus'], ans: 3, cat: 'Fakta Planet', diff: 'Mudah' },
+  { orbit: -1, q: 'Komet terbuat dari...', opts: ['Batu dan logam','Es, debu, dan gas','Hanya gas','Hanya es'], ans: 1, cat: 'Benda Langit', diff: 'Sedang' },
+];
+
+// AI enemy names
+const ENEMY_NAMES = ['Astro_X','NovaKid','StarDust','CosmicAce','OrbitRun','LunarFox','SunBlaze','VoidWalk','NebulaPro','GalaxyZ','MeteorMax','PlanetHop','RocketFin','DarkMatter','LightYear','SpaceOwl','AstroNerd','QuasarQ','PulsarP','WarpDrive','StarHawk','ZeroGrav','SolarWind','IonStorm','RedShift','BlueStar','CometTail','AstroBot','NovaNova','RingMaster','TitanRun','JupiterJr','VenusVibe','MarsRover','SaturnKid','NeptunX','MercuryGo','UranusUp','PlutoFan','GanyBoy','EuropaGal','CallistoK','IoFire','TitanGas','PhobosGo','DeimosRun','MoonWalk','SunChild','HelioMax'];
+
+// ============ GAME STATE ============
+let state = {
+  playerName: 'Penjelajah',
+  hp: 100,
+  energy: 0,
+  shield: 0,
+  score: 0,
+  orbit: 0, // 0-7 (index of planet)
+  questionsAnswered: 0,
+  correctAnswers: 0,
+  currentQuestion: null,
+  timer: 15,
+  timerInterval: null,
+  enemies: 50,
+  items: [],
+  factsLearned: [],
+  questionsUsed: [],
+  gameActive: false,
+  answering: false,
+  questionsInOrbit: 0
+};
+
+// ============ CONFIG (Element SDK) ============
+const defaultConfig = {
+  game_title: 'Solar Storm Battle Arena',
+  player_name_label: 'Nama Penjelajah',
+  start_button_text: '🚀 Mulai Misi!',
+  background_color: '#0a0a1a',
+  surface_color: '#1e1b4b',
+  text_color: '#e2e8f0',
+  primary_action_color: '#6366f1',
+  secondary_action_color: '#a855f7',
+  font_family: 'Exo 2',
+  font_size: 16
+};
+
+function applyConfig(config) {
+  const c = key => config[key] || defaultConfig[key];
+  const bg = c('background_color');
+  const surface = c('surface_color');
+  const txt = c('text_color');
+  const primary = c('primary_action_color');
+  const secondary = c('secondary_action_color');
+  const font = c('font_family');
+  const fontSize = c('font_size');
+
+  document.body.style.background = bg;
+  document.body.style.color = txt;
+  document.body.style.fontFamily = `'${font}', 'Exo 2', sans-serif`;
+  document.body.style.fontSize = fontSize + 'px';
+
+  const title = document.getElementById('title-text');
+  if (title) title.textContent = c('game_title');
+
+  const nameLabel = document.getElementById('name-label');
+  if (nameLabel) nameLabel.textContent = c('player_name_label');
+
+  const startBtn = document.getElementById('start-btn');
+  if (startBtn) {
+    startBtn.textContent = c('start_button_text');
+    startBtn.style.background = `linear-gradient(135deg, ${primary}, ${secondary})`;
+  }
+
+  // Apply surface color to cards
+  document.querySelectorAll('.planet-card, #question-box').forEach(el => {
+    el.style.background = `${surface}99`;
+    el.style.borderColor = `${primary}33`;
+  });
+
+  // Apply text color broadly
+  document.querySelectorAll('h1,h2,h3,p,span,div,label').forEach(el => {
+    // Only override non-specially colored elements
+  });
+
+  // Title font
+  document.querySelectorAll('[style*="Orbitron"]').forEach(el => {
+    el.style.fontFamily = `'Orbitron', '${font}', monospace`;
+  });
+}
+
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => applyConfig(config),
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+      { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+      { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+      { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: v => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+      { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: v => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } }
+    ],
+    borderables: [],
+    fontEditable: {
+      get: () => config.font_family || defaultConfig.font_family,
+      set: v => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+    },
+    fontSizeable: {
+      get: () => config.font_size || defaultConfig.font_size,
+      set: v => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+    }
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ['game_title', config.game_title || defaultConfig.game_title],
+    ['player_name_label', config.player_name_label || defaultConfig.player_name_label],
+    ['start_button_text', config.start_button_text || defaultConfig.start_button_text]
+  ])
+});
+
+// ============ GAME LOGIC ============
+
+function showScreen(id) {
+  ['screen-start','screen-game','screen-gameover'].forEach(s => {
+    const el = document.getElementById(s);
+    el.classList.add('hidden');
+    el.style.display = 'none';
+  });
+  const target = document.getElementById(id);
+  target.classList.remove('hidden');
+  target.style.display = id === 'screen-start' || id === 'screen-gameover' ? 'flex' : 'block';
+}
+
+function startGame() {
+  const nameInput = document.getElementById('player-name').value.trim();
+  state = {
+    playerName: nameInput || 'Penjelajah',
+    hp: 100, energy: 0, shield: 0, score: 0, orbit: 0,
+    questionsAnswered: 0, correctAnswers: 0,
+    currentQuestion: null, timer: 15, timerInterval: null,
+    enemies: 50, items: [], factsLearned: [], questionsUsed: [],
+    gameActive: true, answering: false, questionsInOrbit: 0
+  };
+  showScreen('screen-game');
+  updateHUD();
+  loadOrbit();
+  nextQuestion();
+}
+
+function restartGame() {
+  showScreen('screen-start');
+}
+
+function loadOrbit() {
+  const planet = PLANETS[state.orbit];
+  document.getElementById('planet-emoji').textContent = planet.emoji;
+  document.getElementById('planet-name').textContent = planet.name;
+  document.getElementById('planet-desc').textContent = planet.desc;
+  document.getElementById('planet-fact').innerHTML = '💡 ' + planet.facts[Math.floor(Math.random() * planet.facts.length)];
+  document.getElementById('hud-orbit').textContent = state.orbit + 1;
+  state.questionsInOrbit = 0;
+
+  // Zone warning at later orbits
+  const zw = document.getElementById('zone-warning');
+  if (state.orbit >= 4) {
+    zw.classList.remove('hidden');
+  } else {
+    zw.classList.add('hidden');
+  }
+}
+
+function getQuestion() {
+  // Get questions for current orbit + general
+  let pool = QUESTIONS.filter(q =>
+    (q.orbit === state.orbit || q.orbit === -1) && !state.questionsUsed.includes(QUESTIONS.indexOf(q))
+  );
+  if (pool.length === 0) {
+    // Reuse all if exhausted
+    pool = QUESTIONS.filter(q => q.orbit === state.orbit || q.orbit === -1);
+  }
+  const q = pool[Math.floor(Math.random() * pool.length)];
+  state.questionsUsed.push(QUESTIONS.indexOf(q));
+  return q;
+}
+
+function nextQuestion() {
+  if (!state.gameActive) return;
+
+  // Check orbit advance (every 3 correct in orbit)
+  if (state.questionsInOrbit >= 3 && state.orbit < 7) {
+    state.orbit++;
+    loadOrbit();
+    // Eliminate some enemies
+    const eliminated = Math.floor(Math.random() * 6) + 3;
+    state.enemies = Math.max(1, state.enemies - eliminated);
+    showFloatText(`🚀 Orbit ${state.orbit + 1}! ${eliminated} penjelajah tersingkir!`, '#fbbf24');
+  }
+
+  const q = getQuestion();
+  state.currentQuestion = q;
+  state.answering = false;
+
+  document.getElementById('question-text').textContent = q.q;
+  document.getElementById('q-category').textContent = q.cat;
+
+  const diffEl = document.getElementById('q-difficulty');
+  diffEl.textContent = q.diff;
+  const diffColors = { 'Mudah': ['rgba(34,197,94,0.2)','#86efac'], 'Sedang': ['rgba(251,191,36,0.2)','#fde68a'], 'Sulit': ['rgba(239,68,68,0.2)','#fca5a5'] };
+  const dc = diffColors[q.diff] || diffColors['Mudah'];
+  diffEl.style.background = dc[0];
+  diffEl.style.color = dc[1];
+
+  const container = document.getElementById('answers-container');
+  container.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'answer-btn w-full text-left px-4 py-3 rounded-xl text-sm font-medium';
+    btn.style.cssText = `background: rgba(30,27,75,0.6); border: 1px solid rgba(99,102,241,0.25); color: #e2e8f0; cursor: pointer;`;
+    btn.innerHTML = `<span style="color: #818cf8; font-weight: 700; margin-right: 8px;">${String.fromCharCode(65+i)}.</span> ${opt}`;
+    btn.onclick = () => selectAnswer(i);
+    container.appendChild(btn);
+  });
+
+  // Start timer
+  state.timer = state.orbit >= 5 ? 12 : 15;
+  document.getElementById('timer-display').textContent = '⏱️ ' + state.timer;
+  clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    state.timer--;
+    document.getElementById('timer-display').textContent = '⏱️ ' + state.timer;
+    if (state.timer <= 5) {
+      document.getElementById('timer-display').style.color = '#ef4444';
+    } else {
+      document.getElementById('timer-display').style.color = '#fbbf24';
+    }
+    if (state.timer <= 0) {
+      clearInterval(state.timerInterval);
+      handleTimeout();
+    }
+  }, 1000);
+
+  updateHUD();
+}
+
+function selectAnswer(idx) {
+  if (state.answering || !state.gameActive) return;
+  state.answering = true;
+  clearInterval(state.timerInterval);
+
+  const q = state.currentQuestion;
+  const correct = idx === q.ans;
+  const btns = document.querySelectorAll('.answer-btn');
+
+  // Highlight correct/wrong
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.ans) btn.classList.add('correct-answer');
+    if (i === idx && !correct) btn.classList.add('wrong-answer');
+  });
+
+  const feedback = document.getElementById('feedback-area');
+  feedback.classList.remove('hidden');
+
+  if (correct) {
+    state.correctAnswers++;
+    state.questionsInOrbit++;
+    const planet = PLANETS[state.orbit];
+
+    // Score based on difficulty and timer
+    const diffBonus = { 'Mudah': 100, 'Sedang': 200, 'Sulit': 350 };
+    const timeBonus = state.timer * 10;
+    const totalPts = (diffBonus[q.diff] || 100) + timeBonus;
+    state.score += totalPts;
+
+    // Energy gain
+    state.energy = Math.min(100, state.energy + 15);
+
+    // Random rewards
+    const rewards = [];
+    if (Math.random() < 0.3) { state.shield += 10; rewards.push('🛡️+10'); }
+    if (Math.random() < 0.2) { state.items.push('⚡'); rewards.push('⚡Energi Ekstra'); }
+
+    // Learn fact
+    const fact = planet.facts[Math.floor(Math.random() * planet.facts.length)];
+    if (!state.factsLearned.includes(fact)) state.factsLearned.push(fact);
+
+    feedback.style.background = 'rgba(34,197,94,0.15)';
+    feedback.style.border = '1px solid rgba(34,197,94,0.3)';
+    feedback.style.color = '#86efac';
+    feedback.innerHTML = `✅ Benar! +${totalPts} poin ${rewards.length ? '| ' + rewards.join(' ') : ''}<br><span style="font-size:0.75rem;color:#94a3b8;">${fact}</span>`;
+
+    showFloatText(`+${totalPts}`, '#22c55e');
+    document.getElementById('app').classList.add('screen-flash-correct');
+    setTimeout(() => document.getElementById('app').classList.remove('screen-flash-correct'), 500);
+
+  } else {
+    // Damage
+    let damage = 20;
+    if (state.shield > 0) {
+      const absorbed = Math.min(state.shield, 10);
+      state.shield -= absorbed;
+      damage -= absorbed;
+      showFloatText(`🛡️ Shield menyerap ${absorbed} damage!`, '#38bdf8');
+    }
+    state.hp = Math.max(0, state.hp - damage);
+    state.energy = Math.max(0, state.energy - 5);
+
+    feedback.style.background = 'rgba(239,68,68,0.15)';
+    feedback.style.border = '1px solid rgba(239,68,68,0.3)';
+    feedback.style.color = '#fca5a5';
+    feedback.innerHTML = `❌ Salah! Jawaban: <strong>${q.opts[q.ans]}</strong> | -${damage} HP<br><span style="font-size:0.75rem;color:#94a3b8;">${PLANETS[state.orbit].facts[0]}</span>`;
+
+    showFloatText(`-${damage} HP`, '#ef4444');
+    document.getElementById('app').classList.add('screen-flash-wrong');
+    setTimeout(() => document.getElementById('app').classList.remove('screen-flash-wrong'), 500);
+
+    // Eliminate random enemy occasionally
+    if (Math.random() < 0.15) {
+      state.enemies = Math.max(1, state.enemies - 1);
+    }
+  }
+
+  state.questionsAnswered++;
+  updateHUD();
+
+  // Check game over
+  if (state.hp <= 0) {
+    setTimeout(() => endGame(false), 1500);
+    return;
+  }
+  // Check win (orbit 8 completed with 3 questions)
+  if (state.orbit === 7 && state.questionsInOrbit >= 3) {
+    setTimeout(() => endGame(true), 1500);
+    return;
+  }
+
+  setTimeout(() => {
+    feedback.classList.add('hidden');
+    nextQuestion();
+  }, 2200);
+}
+
+function handleTimeout() {
+  if (state.answering) return;
+  state.answering = true;
+
+  const damage = 15;
+  state.hp = Math.max(0, state.hp - damage);
+  state.questionsAnswered++;
+
+  const feedback = document.getElementById('feedback-area');
+  feedback.classList.remove('hidden');
+  feedback.style.background = 'rgba(251,191,36,0.15)';
+  feedback.style.border = '1px solid rgba(251,191,36,0.3)';
+  feedback.style.color = '#fde68a';
+  const q = state.currentQuestion;
+  feedback.innerHTML = `⏱️ Waktu habis! Jawaban: <strong>${q.opts[q.ans]}</strong> | -${damage} HP`;
+
+  const btns = document.querySelectorAll('.answer-btn');
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.ans) btn.classList.add('correct-answer');
+  });
+
+  showFloatText(`⏱️ -${damage}`, '#fbbf24');
+  updateHUD();
+
+  if (state.hp <= 0) {
+    setTimeout(() => endGame(false), 1500);
+    return;
+  }
+
+  setTimeout(() => {
+    feedback.classList.add('hidden');
+    nextQuestion();
+  }, 2000);
+}
+
+function updateHUD() {
+  document.getElementById('hp-fill').style.width = state.hp + '%';
+  document.getElementById('hp-text').textContent = state.hp;
+  document.getElementById('energy-fill').style.width = state.energy + '%';
+  document.getElementById('energy-text').textContent = state.energy;
+  document.getElementById('shield-text').textContent = state.shield;
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('hud-orbit').textContent = state.orbit + 1;
+  document.getElementById('enemies-count').textContent = state.enemies;
+
+  // Items bar
+  const itemsBar = document.getElementById('items-bar');
+  itemsBar.innerHTML = state.items.slice(-6).map(i =>
+    `<span class="text-lg" title="Power-up">${i}</span>`
+  ).join('');
+}
+
+function showFloatText(text, color) {
+  const container = document.getElementById('float-container');
+  const el = document.createElement('div');
+  el.className = 'float-text';
+  el.style.cssText = `position:absolute; top:40%; left:50%; transform:translateX(-50%); font-family:'Orbitron',monospace; font-size:1.3rem; font-weight:900; color:${color}; text-shadow: 0 0 15px ${color};`;
+  el.textContent = text;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
+}
+
+function endGame(won) {
+  state.gameActive = false;
+  clearInterval(state.timerInterval);
+
+  // Generate AI leaderboard
+  const aiPlayers = ENEMY_NAMES.slice(0, state.enemies - 1).map(name => ({
+    name,
+    score: Math.floor(Math.random() * (state.score + 500)),
+    orbit: Math.floor(Math.random() * 8) + 1
+  }));
+  aiPlayers.push({ name: state.playerName + ' ⭐', score: state.score, orbit: state.orbit + 1 });
+  aiPlayers.sort((a, b) => b.score - a.score);
+
+  const playerRank = aiPlayers.findIndex(p => p.name.includes('⭐')) + 1;
+
+  // Game over screen
+  if (won) {
+    document.getElementById('go-emoji').textContent = '🏆';
+    document.getElementById('go-title').textContent = 'Penguasa Tata Surya!';
+    document.getElementById('go-title').style.color = '#fbbf24';
+    document.getElementById('go-subtitle').textContent = 'Selamat! Kamu berhasil menguasai semua orbit!';
+  } else {
+    document.getElementById('go-emoji').textContent = '💀';
+    document.getElementById('go-title').textContent = 'Misi Gagal!';
+    document.getElementById('go-title').style.color = '#f87171';
+    document.getElementById('go-subtitle').textContent = 'Oksigenmu habis di orbit luar angkasa...';
+  }
+
+  document.getElementById('go-score').textContent = state.score;
+  document.getElementById('go-correct').textContent = state.correctAnswers;
+  document.getElementById('go-orbit').textContent = state.orbit + 1;
+  document.getElementById('go-rank').textContent = '#' + playerRank;
+
+  // Facts
+  const factsEl = document.getElementById('go-facts');
+  factsEl.innerHTML = state.factsLearned.length > 0
+    ? state.factsLearned.map(f => `<div class="py-1 px-2 rounded" style="background:rgba(99,102,241,0.1);">🔹 ${f}</div>`).join('')
+    : '<div style="color:#64748b;">Belum ada fakta yang dikumpulkan.</div>';
+
+  // Leaderboard
+  const lbEl = document.getElementById('leaderboard');
+  lbEl.innerHTML = aiPlayers.slice(0, 10).map((p, i) => {
+    const isPlayer = p.name.includes('⭐');
+    const medals = ['🥇','🥈','🥉'];
+    const medal = i < 3 ? medals[i] : `<span style="color:#64748b;">${i+1}.</span>`;
+    return `<div class="leaderboard-row flex items-center justify-between px-3 py-1.5 rounded-lg text-xs ${isPlayer ? '' : ''}" style="${isPlayer ? 'background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.3);' : ''}">
+      <div class="flex items-center gap-2">
+        <span>${medal}</span>
+        <span class="font-semibold" style="color:${isPlayer ? '#c4b5fd' : '#94a3b8'};">${p.name}</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span style="color:#94a3b8;">Orbit ${p.orbit}</span>
+        <span class="font-bold" style="color:#fbbf24; font-family:'Orbitron',monospace;">${p.score}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  showScreen('screen-gameover');
+}
+
+// Initialize
+showScreen('screen-start');
+lucide.createIcons();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ee105e8f0284f50',t:'MTc3NjQ4NzU1OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
